@@ -1,12 +1,12 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
     namespace = "com.mahiro.thinksmovie"
-    compileSdk = 36
+    compileSdk = 37
+    ndkVersion = "27.2.12479018"
 
     defaultConfig {
         applicationId = "com.mahiro.thinksmovie"
@@ -53,7 +53,7 @@ if (!project.hasProperty("skipRust")) {
 }
 
 dependencies {
-    // BOM 2026.09.00 = Compose 1.12.1 (compileSdk 36). Material3 dinaikkan manual ke 1.5.0
+    // BOM 2026.09.00 = Compose 1.12.1 (compileSdk 37, AGP 9.1+). Material3 dinaikkan manual ke 1.5.0
     // karena API Material 3 Expressive baru publik di 1.5.0 (di 1.4.0 berstatus internal).
     implementation(platform("androidx.compose:compose-bom:2026.09.00"))
     implementation("androidx.compose.ui:ui")

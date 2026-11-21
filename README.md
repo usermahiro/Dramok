@@ -23,13 +23,14 @@ proxy lokal -> ExoPlayer memutar dari `http://127.0.0.1:<port>/...`.
 
 ## Build
 
-Butuh: JDK 17, Android SDK 36, NDK, Rust + target Android, `cargo-ndk`, Gradle 8.13+.
+Butuh: JDK 17, Android SDK 37, build-tools 36.0.0, NDK 27.2.12479018, Rust + target Android,
+`cargo-ndk`, Gradle 9.3.1 (AGP 9.1.1).
 
 ```bash
 rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
 cargo install cargo-ndk
 export ANDROID_NDK_HOME=/path/ke/ndk
-gradle wrapper --gradle-version 8.13     # sekali saja, membuat gradlew
+gradle wrapper --gradle-version 9.3.1    # sekali saja, membuat gradlew
 ./gradlew :app:assembleRelease           # Gradle otomatis menjalankan cargo ndk
 ```
 
@@ -38,9 +39,9 @@ Build otomatis: push tag `v*` atau jalankan workflow **Build ThinksMovie** (APK 
 
 ## Catatan
 
-- Versi pin: Compose BOM 2026.09.00 (Compose 1.12.1, compileSdk 36) + Material 3 **1.5.0** (API Expressive publik
-  mulai 1.5.0; di 1.4.0 berstatus internal). Naik ke Compose 1.13 / BOM 2026.11.01 butuh Kotlin 2.2+, compileSdk 37.1,
-  dan AGP yang mendukungnya.
+- Versi pin: Compose BOM 2026.09.00 (Compose 1.12.1) + Material 3 **1.5.0** memerlukan compileSdk 37
+  dan AGP 9.1+. Build memakai AGP 9.1.1, Gradle 9.3.1, serta Kotlin bawaan AGP yang dipin ke 2.2.21
+  agar cocok dengan plugin Compose. `minSdk` tetap 26 dan `targetSdk` tetap 36.
 - Nama field poster di respons `getSeriesBySlug` belum diverifikasi (lihat `COVER_KEYS` di
   `rust/src/catalog.rs`). Jika poster kosong, UI memakai placeholder; sesuaikan kuncinya.
 - APK release ditandatangani dengan kunci debug supaya mudah dipasang. Ganti untuk distribusi.

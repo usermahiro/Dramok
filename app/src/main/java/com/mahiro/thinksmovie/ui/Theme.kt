@@ -19,12 +19,28 @@ private val BrandDark = darkColorScheme(
     primaryContainer = Color(0xFF8E0D4B),
     onPrimaryContainer = Color(0xFFFFD9E2),
     secondary = Color(0xFFE2BDC7),
+    onSecondary = Color(0xFF422E37),
     secondaryContainer = Color(0xFF5A3F48),
+    onSecondaryContainer = Color(0xFFFFD9E2),
+    tertiary = Color(0xFFFFD2A6),
+    onTertiary = Color(0xFF5B3A00),
+    tertiaryContainer = Color(0xFF7A5200),
+    onTertiaryContainer = Color(0xFFFFE3C2),
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = Color(0xFFFFDAD6),
     background = Color(0xFF191114),
+    onBackground = Color(0xFFF5DEE7),
     surface = Color(0xFF191114),
+    onSurface = Color(0xFFF5DEE7),
+    surfaceVariant = Color(0xFF33262B),
+    onSurfaceVariant = Color(0xFFD8C2CA),
+    outline = Color(0xFF9F8B93),
+    outlineVariant = Color(0xFF4F3B44),
 )
 
-/** Material 3 Expressive: skema warna dinamis (Android 12+), motion expressive, bentuk MaterialShapes. */
+/** Material 3 Expressive: warna dinamis (Android 12+), motion expressive, bentuk MaterialShapes. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ThinksMovieTheme(

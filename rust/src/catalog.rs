@@ -26,10 +26,22 @@ pub struct Meta {
 }
 
 impl Meta {
+    /// Filter Indonesia ala Melolo: kolom `langs` harus memuat `id`.
+    /// Data yang tidak ada dianggap Indonesia agar drama tidak hilang.
+    pub fn indonesian(&self) -> bool {
+        match &self.langs {
+            Value::String(s) if s.trim().is_empty() => true,
+            Value::String(s) => s.split(',').any(|p| p.trim() == "id"),
+            Value::Array(a) => a.iter().any(|v| v.as_str() == Some("id")),
+            _ => true,
+        }
+    }
+
     pub fn to_json(&self) -> Value {
         json!({
             "name": self.name,
             "langs": self.langs,
+            "indonesian": self.indonesian(),
             "episode_num": self.episode_num,
             "cover": self.cover,
             "episodes": self.episodes,
@@ -78,15 +90,35 @@ fn all_slugs() -> Result<Vec<String>, String> {
     Ok(slugs)
 }
 
-/// Daftar drama dub Indonesia (slug memuat "dub"), opsional disaring kata kunci.
-pub fn dramas(keyword: &str, limit: usize, only_dub: bool) -> Result<(Vec<String>, usize), String> {
+/// Samakan ejaan Inggris/Indonesia umum (`system` -> `sistem`).
+fn normalize(s: &str) -> String {
+    s.to_lowercase()
+        .chars()
+        .map(|c| if c == 'y' { 'i' } else { c })
+        .collect()
+}
+
+/// Kata kunci pencarian menjadi token yang sudah dinormalisasi.
+fn keyword_tokens(keyword: &str) -> Vec<String> {
+    keyword
+        .split_whitespace()
+        .map(normalize)
+        .filter(|t| t.chars().count() >= 2)
+        .collect()
+}
+
+/// Cocokkan slug bila mengandung salah satu token (judul diambil lalu dari API).
+fn matches_slug(slug: &str, tokens: &[String]) -> bool {
+    let s = normalize(slug);
+    tokens.iter().any(|t| s.contains(t))
+}
+
+/// Daftar semua drama Indonesia dari sitemap, opsional disaring kata kunci.
+pub fn dramas(keyword: &str, limit: usize) -> Result<(Vec<String>, usize), String> {
     let mut slugs = all_slugs()?;
-    if only_dub {
-        slugs.retain(|s| s.contains("dub"));
-    }
-    let k = keyword.trim().to_lowercase();
-    if !k.is_empty() {
-        slugs.retain(|s| s.contains(&k.replace(' ', "-")) || s.contains(&k));
+    let tokens = keyword_tokens(keyword);
+    if !tokens.is_empty() {
+        slugs.retain(|s| matches_slug(s, &tokens));
     }
     let total = slugs.len();
     slugs.truncate(limit);
@@ -233,5 +265,26 @@ mod tests {
         assert!(m.episodes.is_empty());
         assert_eq!(m.episode_num, 0);
         assert!(m.cover.is_empty());
+    }
+
+    #[test]
+    fn search_matches_any_token() {
+        assert!(matches_slug("sistem-sultan-putri", &["sultan".to_string()]));
+        assert!(matches_slug("sistem-sultan-putri", &["putri".to_string()]));
+        assert!(!matches_slug("cinta-di-desa", &["sultan".to_string()]));
+    }
+
+    #[test]
+    fn search_accepts_indonesian_spelling_variant() {
+        let tokens = keyword_tokens("system sultan");
+        assert!(matches_slug("sistem-sultan-putri", &tokens));
+    }
+
+    #[test]
+    fn indonesian_langs_detection() {
+        assert!(meta_from_item(&json!({ "langs": ",id" })).indonesian());
+        assert!(meta_from_item(&json!({ "langs": "en,id,jp" })).indonesian());
+        assert!(!meta_from_item(&json!({ "langs": "en,jp" })).indonesian());
+        assert!(meta_from_item(&json!({})).indonesian());
     }
 }

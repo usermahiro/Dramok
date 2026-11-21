@@ -25,6 +25,8 @@ class MainViewModel : ViewModel() {
 
     // ---- Pemutar ----
     var dramaIndex by mutableIntStateOf(-1); private set
+    /** Mode Snap: geser mengganti drama acak, bukan episode. */
+    var snapMode by mutableStateOf(false); private set
     var episodes by mutableStateOf<List<Int>>(emptyList()); private set
     var episodeIndex by mutableIntStateOf(-1); private set
     var playUrl by mutableStateOf<String?>(null); private set
@@ -63,12 +65,22 @@ class MainViewModel : ViewModel() {
         if (metas.containsKey(slug) || !inFlight.add(slug)) return
         viewModelScope.launch {
             try {
-                gate.withPermit { metas[slug] = Repository.meta(slug) }
+                val meta = gate.withPermit { Repository.meta(slug) }
+                if (meta.indonesian) metas[slug] = meta else dropSlug(slug)
             } catch (_: Exception) {
                 // Kartu tetap tampil dengan placeholder.
             } finally {
                 inFlight.remove(slug)
             }
+        }
+    }
+
+    /** Filter Indonesia: buang drama yang `langs`-nya tidak memuat `id`. */
+    private fun dropSlug(slug: String) {
+        if (slugs.any { it == slug }) {
+            slugs = slugs.filterNot { it == slug }
+            total = (total - 1).coerceAtLeast(0)
+            metas.remove(slug)
         }
     }
 
@@ -84,6 +96,10 @@ class MainViewModel : ViewModel() {
             try {
                 val meta = metas[slug] ?: Repository.meta(slug).also { metas[slug] = it }
                 if (token != playToken) return@launch
+                if (!meta.indonesian) {
+                    playError = "Drama ini tidak tersedia dalam bahasa Indonesia."
+                    return@launch
+                }
                 episodes = meta.episodes
                 if (meta.episodes.isEmpty()) playError = "Drama ini belum punya episode." else playEpisode(0)
             } catch (e: Exception) {
@@ -91,6 +107,24 @@ class MainViewModel : ViewModel() {
             }
         }
     }
+
+    /** Snap: ambil drama acak dari katalog lalu langsung putar episode pertama. */
+    fun snap() {
+        if (slugs.isEmpty()) return
+        snapMode = true
+        openDrama((0 until slugs.size).random())
+    }
+
+    /** Geser saat masih dalam mode Snap: pindah ke drama acak lain. */
+    fun randomDrama() {
+        if (slugs.size < 2) return
+        var next = dramaIndex
+        while (next == dramaIndex) next = (0 until slugs.size).random()
+        openDrama(next)
+    }
+
+    /** Masuk Drama: kunci drama saat ini, geser berikutnya mengganti episode. */
+    fun enterDrama() { snapMode = false }
 
     fun playEpisode(index: Int) {
         val slug = currentSlug ?: return
@@ -121,6 +155,7 @@ class MainViewModel : ViewModel() {
 
     fun closePlayer() {
         playToken++
+        snapMode = false
         dramaIndex = -1
         episodeIndex = -1
         episodes = emptyList()

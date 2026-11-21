@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,11 +22,14 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
@@ -52,6 +56,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -68,9 +73,27 @@ fun HomeScreen(vm: MainViewModel, gridState: LazyGridState) {
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
-                title = { Text("ThinksMovie", fontWeight = FontWeight.Bold) },
+                title = {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("ThinksMovie", fontWeight = FontWeight.Bold)
+                        Text(
+                            "Drama dub Indonesia",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
                 scrollBehavior = scroll,
             )
+        },
+        floatingActionButton = {
+            if (!vm.listLoading && vm.slugs.isNotEmpty()) {
+                ExtendedFloatingActionButton(
+                    onClick = vm::snap,
+                    icon = { Icon(Icons.Filled.PlayArrow, contentDescription = null) },
+                    text = { Text("Snap") },
+                )
+            }
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
@@ -78,39 +101,9 @@ fun HomeScreen(vm: MainViewModel, gridState: LazyGridState) {
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when {
                     vm.listLoading -> LoadingIndicator(Modifier.align(Alignment.Center).size(72.dp))
-                    vm.listError != null -> Column(
-                        Modifier.align(Alignment.Center).padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Text(vm.listError.orEmpty(), color = MaterialTheme.colorScheme.error)
-                        Button(onClick = vm::search) { Text("Coba lagi") }
-                    }
-                    vm.slugs.isEmpty() -> Text(
-                        "Tidak ada drama ditemukan",
-                        Modifier.align(Alignment.Center),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    else -> LazyVerticalGrid(
-                        state = gridState,
-                        columns = GridCells.Adaptive(150.dp),
-                        contentPadding = PaddingValues(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            Text(
-                                "${vm.total} drama dub Indonesia",
-                                style = MaterialTheme.typography.titleMediumEmphasized,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        itemsIndexed(vm.slugs, key = { _, s -> s }) { index, slug ->
-                            LaunchedEffect(slug) { vm.loadMeta(slug) }
-                            DramaCard(slug, vm.metas[slug]) { vm.openDrama(index) }
-                        }
-                    }
+                    vm.listError != null -> EmptyState(vm.listError.orEmpty(), vm::search)
+                    vm.slugs.isEmpty() -> EmptyState("Tidak ada drama ditemukan", vm::search)
+                    else -> DramaGrid(vm, gridState)
                 }
             }
         }
@@ -135,6 +128,9 @@ private fun SearchField(vm: MainViewModel) {
         singleLine = true,
         shape = CircleShape,
         colors = TextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent,
             disabledIndicatorColor = Color.Transparent,
@@ -145,11 +141,92 @@ private fun SearchField(vm: MainViewModel) {
     )
 }
 
+@Composable
+private fun EmptyState(message: String, onRetry: () -> Unit) {
+    Column(
+        Modifier.fillMaxSize().padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            modifier = Modifier.size(72.dp),
+        ) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.Filled.Search,
+                    contentDescription = null,
+                    Modifier.size(32.dp),
+                    MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
+        }
+        Text(
+            message,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+        )
+        FilledRetryButton(onRetry)
+    }
+}
+
+@Composable
+private fun FilledRetryButton(onRetry: () -> Unit) {
+    Button(onClick = onRetry) { Text("Coba lagi") }
+}
+
+@Composable
+private fun DramaGrid(vm: MainViewModel, gridState: LazyGridState) {
+    LazyVerticalGrid(
+        state = gridState,
+        columns = GridCells.Adaptive(150.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                ) {
+                    Text(
+                        "Indonesia",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                    )
+                }
+                Text(
+                    "${vm.total} drama",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        itemsIndexed(vm.slugs, key = { _, s -> s }) { index, slug ->
+            LaunchedEffect(slug) { vm.loadMeta(slug) }
+            DramaCard(slug, vm.metas[slug]) { vm.openDrama(index) }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun DramaCard(slug: String, meta: DramaMeta?, onClick: () -> Unit) {
     val title = remember(slug, meta?.name) { displayTitle(slug, meta?.name) }
-    Card(onClick = onClick, shape = RoundedCornerShape(28.dp), modifier = Modifier.fillMaxWidth()) {
+    Card(
+        onClick = onClick,
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f)) {
             if (meta?.coverUrl != null) {
                 AsyncImage(
@@ -163,7 +240,7 @@ private fun DramaCard(slug: String, meta: DramaMeta?, onClick: () -> Unit) {
             }
             Box(
                 Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(0.5f to Color.Transparent, 1f to Color(0xE6000000))
+                    Brush.verticalGradient(0.45f to Color.Transparent, 1f to Color(0xE6000000))
                 )
             )
             if (meta != null && meta.episodeCount > 0) {

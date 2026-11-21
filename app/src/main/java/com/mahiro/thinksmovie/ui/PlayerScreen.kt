@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,16 +53,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -108,6 +112,7 @@ fun PlayerScreen(vm: MainViewModel) {
     var seekFraction by remember { mutableStateOf<Float?>(null) }
     var controlsVisible by remember { mutableStateOf(true) }
     var showEpisodes by remember { mutableStateOf(false) }
+    var dragY by remember { mutableFloatStateOf(0f) }
 
     DisposableEffect(exo) {
         val listener = object : Player.Listener {
@@ -166,12 +171,39 @@ fun PlayerScreen(vm: MainViewModel) {
             modifier = Modifier.fillMaxSize(),
         )
 
-        // Ketuk video untuk menampilkan/menyembunyikan kontrol.
+        // Scrim supaya teks kontrol tetap terbaca di atas video terang.
         Box(
-            Modifier.fillMaxSize().clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-            ) { controlsVisible = !controlsVisible }
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(listOf(Color(0x99000000), Color.Transparent, Color(0x99000000)))
+            )
+        )
+
+        // Ketuk untuk kontrol; geser untuk ganti drama (Snap) atau episode.
+        Box(
+            Modifier
+                .fillMaxSize()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                ) { controlsVisible = !controlsVisible }
+                .pointerInput(vm.snapMode) {
+                    detectVerticalDragGestures(
+                        onDragStart = { dragY = 0f },
+                        onVerticalDrag = { change, amount ->
+                            dragY += amount
+                            change.consume()
+                        },
+                        onDragEnd = {
+                            if (dragY < -80f) {
+                                if (vm.snapMode) vm.randomDrama() else vm.nextEpisode()
+                            } else if (dragY > 80f) {
+                                if (vm.snapMode) vm.randomDrama() else vm.prevEpisode()
+                            }
+                            dragY = 0f
+                        },
+                        onDragCancel = { dragY = 0f },
+                    )
+                }
         )
 
         if (vm.playError == null && (vm.playUrl == null || buffering)) {
@@ -193,14 +225,17 @@ fun PlayerScreen(vm: MainViewModel) {
             Column(
                 Modifier.align(Alignment.Center).padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
-                    "Episode selesai",
+                    if (vm.snapMode) "Drama selesai" else "Episode selesai",
                     style = MaterialTheme.typography.headlineMediumEmphasized,
                     color = Color.White,
                 )
-                if (vm.hasNextEpisode) {
+                if (vm.snapMode) {
+                    ExtendedFloatingActionButton(onClick = vm::randomDrama) { Text("Drama Acak") }
+                    FilledTonalButton(onClick = vm::enterDrama) { Text("Masuk Drama") }
+                } else if (vm.hasNextEpisode) {
                     ExtendedFloatingActionButton(onClick = vm::nextEpisode) { Text("Buka Episode Berikutnya") }
                 } else if (vm.hasNextDrama) {
                     ExtendedFloatingActionButton(onClick = vm::nextDrama) { Text("Drama Berikutnya") }
@@ -224,13 +259,30 @@ fun PlayerScreen(vm: MainViewModel) {
                 Spacer(Modifier.width(12.dp))
                 Surface(shape = RoundedCornerShape(20.dp), color = Color(0x99000000)) {
                     Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
-                        Text(
-                            vm.currentTitle,
-                            color = Color.White,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                vm.currentTitle,
+                                color = Color.White,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                modifier = Modifier.weight(1f, fill = false),
+                            )
+                            if (vm.snapMode) {
+                                Spacer(Modifier.width(8.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(50),
+                                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                                ) {
+                                    Text(
+                                        "Snap",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                    )
+                                }
+                            }
+                        }
                         if (vm.episodeIndex >= 0) {
                             Text(
                                 "Episode ${vm.episodes.getOrNull(vm.episodeIndex) ?: "-"} dari ${vm.episodes.size}",
@@ -255,7 +307,7 @@ fun PlayerScreen(vm: MainViewModel) {
             ) {
                 Column(
                     Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     Slider(
                         value = (seekFraction ?: (position.toFloat() / duration.coerceAtLeast(1))).coerceIn(0f, 1f),
@@ -269,15 +321,26 @@ fun PlayerScreen(vm: MainViewModel) {
                         Text(fmt(position), style = MaterialTheme.typography.labelMedium)
                         Text(fmt(duration), style = MaterialTheme.typography.labelMedium)
                     }
+                    Text(
+                        if (vm.snapMode) "Geser untuk ganti drama acak" else "Geser untuk ganti episode",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                    )
                     Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        FilledTonalIconButton(onClick = vm::prevEpisode, enabled = vm.hasPrevEpisode) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Episode sebelumnya")
+                        FilledTonalIconButton(
+                            onClick = if (vm.snapMode) vm::randomDrama else vm::prevEpisode,
+                            enabled = !vm.snapMode || vm.hasNextDrama || vm.slugs.size > 1,
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = if (vm.snapMode) "Drama acak" else "Episode sebelumnya",
+                            )
                         }
-                        // Bentuk tombol berubah (lingkaran <-> cookie) mengikuti status putar.
                         FilledIconButton(
                             onClick = { if (isPlaying) exo.pause() else exo.play() },
                             shape = if (isPlaying) CircleShape else MaterialShapes.Cookie9Sided.toShape(),
@@ -289,10 +352,14 @@ fun PlayerScreen(vm: MainViewModel) {
                                 modifier = Modifier.size(32.dp),
                             )
                         }
-                        FilledTonalButton(onClick = vm::nextEpisode, enabled = vm.hasNextEpisode) {
-                            Text("Next Eps")
-                            Spacer(Modifier.width(6.dp))
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, Modifier.size(18.dp))
+                        FilledTonalIconButton(
+                            onClick = if (vm.snapMode) vm::randomDrama else vm::nextEpisode,
+                            enabled = !vm.snapMode || vm.slugs.size > 1,
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = if (vm.snapMode) "Drama acak" else "Episode berikutnya",
+                            )
                         }
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -301,11 +368,17 @@ fun PlayerScreen(vm: MainViewModel) {
                             enabled = vm.episodes.isNotEmpty(),
                             modifier = Modifier.weight(1f),
                         ) { Text("Daftar Episode") }
-                        Button(
-                            onClick = vm::nextDrama,
-                            enabled = vm.hasNextDrama,
-                            modifier = Modifier.weight(1f),
-                        ) { Text("Next Drama") }
+                        if (vm.snapMode) {
+                            Button(onClick = vm::enterDrama, modifier = Modifier.weight(1f)) {
+                                Text("Masuk Drama")
+                            }
+                        } else {
+                            Button(
+                                onClick = vm::nextDrama,
+                                enabled = vm.hasNextDrama,
+                                modifier = Modifier.weight(1f),
+                            ) { Text("Next Drama") }
+                        }
                     }
                 }
             }

@@ -5,9 +5,9 @@ use crate::http::CATALOG_BASE;
 use crate::proxy::proxy_url;
 use serde_json::{json, Value};
 
-/// Daftar slug drama dub Indonesia: `{ "total": n, "slugs": [...] }`.
+/// Daftar slug drama Indonesia: `{ "total": n, "slugs": [...] }`.
 pub fn catalog(keyword: &str, limit: usize) -> Result<Value, String> {
-    let (slugs, total) = dramas(keyword, limit.max(1), true)?;
+    let (slugs, total) = dramas(keyword, limit.max(1))?;
     Ok(json!({ "total": total, "slugs": slugs }))
 }
 

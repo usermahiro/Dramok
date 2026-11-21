@@ -11,6 +11,7 @@ data class DramaMeta(
     val coverUrl: String?,
     val episodeCount: Int,
     val episodes: List<Int>,
+    val indonesian: Boolean = true,
 )
 
 /** "dubbed-cinta-1" -> "Dubbed Cinta 1" bila nama asli belum tersedia. */
@@ -29,7 +30,7 @@ object Repository {
     private fun JSONArray.ints(): List<Int> = List(length()) { getInt(it) }
     private fun JSONArray.strings(): List<String> = List(length()) { getString(it) }
 
-    /** Slug drama dub Indonesia + total yang cocok. */
+    /** Slug drama Indonesia + total yang cocok. */
     suspend fun catalog(keyword: String, limit: Int = 300): Pair<List<String>, Int> =
         withContext(Dispatchers.IO) {
             val o = parse(NativeBridge.nativeCatalog(keyword, limit))
@@ -44,6 +45,7 @@ object Repository {
             coverUrl = o.optString("cover_proxy", "").ifEmpty { null },
             episodeCount = o.optInt("episode_num", eps.size),
             episodes = eps,
+            indonesian = o.optBoolean("indonesian", true),
         )
     }
 

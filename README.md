@@ -7,15 +7,15 @@ Dev: **Mahiro**. Port dari `melolowrapper` (Python/Qt) ke Android: **inti Rust +
 
 ```
 rust/                         <- inti aplikasi (libthinksmovie_core.so)
-  src/catalog.rs              sitemap melolo.com + API getSeriesBySlug (port Catalog di melolo_client.py)
+  src/catalog.rs              sitemap melolo.com + API getSeriesBySlug; filter Indonesia via kolom `langs`
   src/proxy.rs                proxy 127.0.0.1 yang menambah Referer + meneruskan Range (port ProxyHandler)
   src/http.rs                 ureq + rustls (root CA dibundel)
   src/api.rs, src/lib.rs      JSON API + binding JNI
   tests/proxy.rs              uji integrasi proxy (Referer/Range/token)
 app/                          <- UI Kotlin + Jetpack Compose (tipis, tanpa logika jaringan)
   ui/Theme.kt                 MaterialExpressiveTheme + MotionScheme.expressive() + dynamic color
-  ui/HomeScreen.kt            grid drama, pencarian, placeholder bentuk MaterialShapes
-  ui/PlayerScreen.kt          Media3 ExoPlayer, Next Eps / Next Drama, daftar episode
+  ui/HomeScreen.kt            grid drama, pencarian, tombol Snap, placeholder MaterialShapes
+  ui/PlayerScreen.kt          Media3 ExoPlayer, geser ganti episode/drama, "Masuk Drama", daftar episode
 ```
 
 Alur: Compose -> `NativeBridge` (JNI) -> Rust ambil data & URL video segar -> URL dibungkus
@@ -35,6 +35,13 @@ gradle wrapper --gradle-version 9.3.1    # sekali saja, membuat gradlew
 ```
 
 Tes inti Rust saja: `cd rust && cargo test`.
+
+## Navigasi
+
+- **Snap** di beranda: ambil drama Indonesia acak, langsung putar episode pertama.
+- Saat mode Snap, geser layar atau tombol panah mengambil drama acak lain.
+- **Masuk Drama**: mengunci drama saat ini; geser berikutnya mengganti episode di drama itu.
+- Filter Indonesia memakai kolom `langs` dari API Melolo (`id`), bukan kata `dub` di alamat.
 Build otomatis: push tag `v*` atau jalankan workflow **Build ThinksMovie** (APK masuk ke Release).
 
 ## Catatan

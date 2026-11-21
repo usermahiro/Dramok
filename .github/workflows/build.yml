@@ -1,0 +1,70 @@
+name: Build ThinksMovie
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  NDK_VERSION: 27.2.12479018
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Pasang platform, build-tools, NDK
+        run: |
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;${NDK_VERSION}"
+          echo "ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+
+      - name: Tes inti Rust (host)
+        run: cargo test --manifest-path rust/Cargo.toml
+
+      - name: Pasang cargo-ndk
+        run: cargo install cargo-ndk --locked
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+
+      - name: Build APK (Rust -> .so -> APK)
+        run: gradle :app:assembleRelease --no-daemon
+
+      - name: Beri nama APK
+        run: cp app/build/outputs/apk/release/app-release.apk "ThinksMovie-${GITHUB_REF_NAME}.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ThinksMovie-apk
+          path: ThinksMovie-*.apk
+
+      - name: Publikasikan ke GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --title "ThinksMovie $TAG" --generate-notes --target "$GITHUB_SHA"
+          gh release upload "$TAG" "ThinksMovie-${TAG}.apk" --clobber

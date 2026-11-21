@@ -1,0 +1,21 @@
+[package]
+name = "thinksmovie_core"
+version = "0.1.0"
+edition = "2021"
+authors = ["Mahiro"]
+description = "Inti Rust ThinksMovie: klien API Melolo, katalog drama dub Indonesia, dan proxy Referer"
+
+[lib]
+name = "thinksmovie_core"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+jni = "0.21"
+serde_json = "1"
+ureq = "2"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true

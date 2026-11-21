@@ -53,11 +53,15 @@ if (!project.hasProperty("skipRust")) {
 }
 
 dependencies {
-    implementation(platform("androidx.compose:compose-bom:2025.10.01"))
+    // BOM 2026.09.00 = Compose 1.12.1 (compileSdk 36). Material3 dinaikkan manual ke 1.5.0
+    // karena API Material 3 Expressive baru publik di 1.5.0 (di 1.4.0 berstatus internal).
+    implementation(platform("androidx.compose:compose-bom:2026.09.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.foundation:foundation")
-    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material3:material3:1.5.0")
+    // Icons.* (PlayArrow, Search, Close, AutoMirrored.ArrowBack/Forward) tidak lagi ikut transitif.
+    implementation("androidx.compose.material:material-icons-core")
     implementation("androidx.graphics:graphics-shapes:1.0.1")
 
     implementation("androidx.activity:activity-compose:1.10.1")

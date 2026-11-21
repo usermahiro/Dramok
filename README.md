@@ -38,8 +38,9 @@ Build otomatis: push tag `v*` atau jalankan workflow **Build ThinksMovie** (APK 
 
 ## Catatan
 
-- Versi pin: Compose BOM 2025.10.01 (Material 3 1.4.0, API Expressive masih `@Experimental`).
-  Untuk BOM 2026.11.01 / Material 3 1.5.0 perlu Kotlin 2.2+ dan compileSdk 37.1.
+- Versi pin: Compose BOM 2026.09.00 (Compose 1.12.1, compileSdk 36) + Material 3 **1.5.0** (API Expressive publik
+  mulai 1.5.0; di 1.4.0 berstatus internal). Naik ke Compose 1.13 / BOM 2026.11.01 butuh Kotlin 2.2+, compileSdk 37.1,
+  dan AGP yang mendukungnya.
 - Nama field poster di respons `getSeriesBySlug` belum diverifikasi (lihat `COVER_KEYS` di
   `rust/src/catalog.rs`). Jika poster kosong, UI memakai placeholder; sesuaikan kuncinya.
 - APK release ditandatangani dengan kunci debug supaya mudah dipasang. Ganti untuk distribusi.

@@ -5,7 +5,11 @@ plugins {
 
 android {
     namespace = "com.mahiro.thinksmovie"
-    compileSdk = 37
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 0
+        }
+    }
     ndkVersion = "27.2.12479018"
 
     defaultConfig {

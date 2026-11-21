@@ -23,7 +23,7 @@ proxy lokal -> ExoPlayer memutar dari `http://127.0.0.1:<port>/...`.
 
 ## Build
 
-Butuh: JDK 17, Android SDK 37, build-tools 36.0.0, NDK 27.2.12479018, Rust + target Android,
+Butuh: JDK 17, Android SDK 37.0 (`platforms;android-37.0`), build-tools 36.0.0, NDK 27.2.12479018, Rust + target Android,
 `cargo-ndk`, Gradle 9.3.1 (AGP 9.1.1).
 
 ```bash
